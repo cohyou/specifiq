@@ -1,10 +1,28 @@
-import sqlite3
-from flask import Flask, render_template
+import uuid
+import subprocess
+import io
+from flask import Flask, request, render_template, redirect
+from model import query_db
+
 app = Flask(__name__)
 
 @app.route('/')
 def root():
     return render_template('index.html')
+
+@app.route('/actors')
+def actors():
+    sql = 'SELECT * FROM actors;'
+    actors = [r['label'] for r in query_db(sql)]
+    return render_template('actors.html', actors=actors)
+
+@app.route('/actors', methods=['POST'])
+def add_actor():
+
+    sql = 'INSERT INTO actors (label) VALUES (?);'
+    print(request.form)
+    query_db(sql, (request.form['label'],))
+    return redirect('actors')
 
 @app.route('/requirements')
 def requirements():
@@ -12,22 +30,41 @@ def requirements():
     requirements = [r['note'] for r in query_db(sql)]
     return render_template('requirements.html', requirements=requirements)
 
-def query_db(query, args=(), one=False):
-    """
-    指定されたSQLを実行して、その結果を返却する
-    """
-    conn = get_connection()
-    conn.row_factory = sqlite3.Row
-    cur = conn.execute(query, args)
-    conn.commit()
-    rv = cur.fetchall()
-    cur.close()
-    return (rv[0] if rv else None) if one else rv
+@app.route('/sample_plantuml/<image_file_name>', methods=['GET', 'POST'])
+def get_sample_plantuml(image_file_name):
 
-def get_connection():
-    """
-    現在のappcontext内のコネクションを取得する
-    """
-    return sqlite3.connect('data.db')
+    image_name = image_file_name + '.png'
+
+    if not 'view_only' in request.args or request.args['view_only'] != "1":
+
+        # 試しにアクター一覧を出してみる
+        sql = 'SELECT * FROM actors;'
+        actors = [f"actor {r['label']}\n" for r in query_db(sql)]
+        actors_txt = ''
+        for actor in actors:
+            actors_txt += actor
+
+        src_template = f'''
+        @startuml
+        left to right direction
+        {actors_txt}
+        @enduml
+        '''
+
+        # PlantUML動作確認用のテキスト
+        src_path = 'plantuml/sample.pu'
+
+        src_path = 'plantuml/'+image_file_name+'.pu'
+        with open(src_path, 'w') as f:
+            f.write(src_template)
+        in_txt = open(src_path, 'r')
+
+        token = str(uuid.uuid4())
+        with open('static/images/' + image_name, 'w') as b:
+            popen = subprocess.Popen(['plantuml', '-p'], stdin=in_txt, stdout=b)
+            stdout_data, stderr_data = popen.communicate()
+
+    return render_template('image.html', imagename=image_name, token=token)
+
 
 app.run()

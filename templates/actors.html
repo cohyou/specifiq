@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<body>
+    <a href="{{ url_for('root') }}">TOPへ</a>
+    <h1>関係者</h1>
+    <ul>
+    {% for a in actors %}
+        <li>{{ a }}<a href="#">削除</a></li>
+    {% endfor%}
+    </ul>
+    <form method="POST" action="actors">
+        <input type="text" name="label"></input>
+        <button type="submit">追加する</button>
+    </form>
+    <form method="POST" action="../sample_plantuml/actors">
+        <button type="submit">UMLで図示する</button>
+    </form>
+</body>
+</html>

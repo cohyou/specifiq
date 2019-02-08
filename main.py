@@ -34,6 +34,7 @@ def requirements():
 def get_sample_plantuml(image_file_name):
 
     image_name = image_file_name + '.png'
+    token = str(uuid.uuid4())
 
     if not 'view_only' in request.args or request.args['view_only'] != "1":
 
@@ -44,22 +45,22 @@ def get_sample_plantuml(image_file_name):
         for actor in actors:
             actors_txt += actor
 
-        src_template = f'''
-        @startuml
-        left to right direction
-        {actors_txt}
-        @enduml
-        '''
+        if image_file_name == 'sample':
+            # PlantUML動作確認用のテキスト
+            src_path = 'plantuml/sample.pu'
+        else:
+            src_template = f'''
+            @startuml
+            left to right direction
+            {actors_txt}
+            @enduml
+            '''
+            src_path = 'plantuml/'+image_file_name+'.pu'
+            with open(src_path, 'w') as f:
+                f.write(src_template)
 
-        # PlantUML動作確認用のテキスト
-        src_path = 'plantuml/sample.pu'
-
-        src_path = 'plantuml/'+image_file_name+'.pu'
-        with open(src_path, 'w') as f:
-            f.write(src_template)
         in_txt = open(src_path, 'r')
 
-        token = str(uuid.uuid4())
         with open('static/images/' + image_name, 'w') as b:
             popen = subprocess.Popen(['plantuml', '-p'], stdin=in_txt, stdout=b)
             stdout_data, stderr_data = popen.communicate()
